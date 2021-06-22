@@ -4,7 +4,6 @@ import logging
 import socket
 import time
 import traceback
-from functools import wraps
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple, Union, Any
 
@@ -13,7 +12,7 @@ from blspy import PrivateKey
 from chia.consensus.block_record import BlockRecord
 from chia.consensus.constants import ConsensusConstants
 from chia.consensus.multiprocess_validation import PreValidationResult
-from chia.daemon.keychain_proxy import KeychainProxy, KeyringIsEmpty, KeyringIsLocked, connect_to_keychain_and_validate
+from chia.daemon.keychain_proxy import KeychainProxy, KeyringIsEmpty, KeyringIsLocked, uses_keychain_proxy
 from chia.protocols import wallet_protocol
 from chia.protocols.full_node_protocol import RequestProofOfWeight, RespondProofOfWeight
 from chia.protocols.protocol_message_types import ProtocolMessageTypes
@@ -113,19 +112,6 @@ class WalletNode:
         self.peer_task = None
         self.logged_in = False
         self.last_new_peak_messages = LRUCache(5)
-
-    def uses_keychain_proxy():
-        """
-        Decorator which establishes a KeychainProxy connection if necessary
-        """
-        def wrapper(method):
-            @wraps(method)
-            async def inner(self, *args, **kwargs):
-                if not self.keychain_proxy:
-                    self.keychain_proxy = await connect_to_keychain_and_validate(self.root_path, self.log)
-                return await method(self, *args, **kwargs)
-            return inner
-        return wrapper
 
     @uses_keychain_proxy()
     async def get_key_for_fingerprint(self, fingerprint: Optional[int]) -> Optional[PrivateKey]:
